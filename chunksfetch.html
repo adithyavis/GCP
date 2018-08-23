@@ -1,0 +1,128 @@
+<html>
+	<head>
+		<title>Sign up </title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+		<script src="https://sdk.amazonaws.com/js/aws-sdk-2.5.0.min.js"></script>
+		<script src="https://s3.amazonaws.com/dharam-code/project/dist/jsbn.js"></script>
+	<script src="https://s3.amazonaws.com/dharam-code/project/dist/jsbn2.js"></script>
+	<script src="https://s3.amazonaws.com/dharam-code/project/dist/aws-cognito-sdk.min.js"></script>
+	
+	<script src="https://s3.amazonaws.com/dharam-code/project/dist/amazon-cognito-identity.min.js"></script>
+	
+	<script src="https://s3.amazonaws.com/dharam-code/project/dist/sjcl.js"></script>
+	
+
+	<script type="text/javascript">
+		//var cognitoUser;
+		function login(){
+			var email = document.getElementById('email').value;
+			var password = document.getElementById('password').value;
+			AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoint
+
+			var poolData = {
+			    UserPoolId : 'us-east-1_Mj7p3xTLi', // your user pool id here
+			    ClientId : '5uvie4hit4nn9n1dt6hmt9680r' // your client id here
+			};
+			
+
+			AWSCognito.config.region = 'us-east-1'; //This is required to derive the endpoint
+			var identityPoolId = 'us-east-1:27fb104e-7123-49fa-a5bb-49e0c28004da'; //go to AWS Cognito Federated Identites
+
+			var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+			var userData = {Username: email, Pool : userPool}
+	        var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
+
+	        var authenticationData = {Username : email, Password : password};
+        	var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
+
+        	cognitoUser.authenticateUser(authenticationDetails, {
+        				onSuccess: function (result) {
+            var accessToken = result.getAccessToken().getJwtToken();
+
+            var idToken = result.idToken.jwtToken;
+            console.log("accessToken"+accessToken);
+            console.log("idToken"+idToken);
+
+            AWS.config.region = 'us-east-1'; 
+            AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: 'us-east-1:27fb104e-7123-49fa-a5bb-49e0c28004da',
+                    Logins: {
+                        'cognito-idp.us-east-1.amazonaws.com/us-east-1_Mj7p3xTLi': idToken
+                    }
+            });
+
+            AWS.config.credentials.refresh((error) => {
+			if (error) {
+    			console.error(error);
+  			} else {
+    		console.log(AWS.config.credentials);
+ 			}
+			});
+			fetchDetails();	
+
+
+		},
+		onFailure: function(err) {
+            alert(err);
+        }
+
+    });
+   }	
+   function fetchDetails(){
+   		var interval = 10000000;
+		var start = 0;
+		var end = interval;
+		var length = 34702296;
+		var s3 = new AWS.S3();
+		function execute(){
+		var params = {
+  				Bucket: "s3-read-weekly", 
+  				Key: "Maroon 5 - Girls Like You ft. Cardi B.mp4",
+  				Range : "bytes="+start+"-"+end
+		};
+		if(end <= length){
+				s3.getObject(params, function(err, data) {
+		   		if (err) console.log(err, err.stack); // an error occurred
+		  		 else {
+
+		  		 	console.log(data.Body);
+		  		 	console.log("New data");
+		  		 	start = end;
+		 			end = end + interval; 
+		 			console.log(start+"::"+end);
+		  		 	var video = document.getElementById('video');
+            		var source = document.createElement('source');
+		  		 	var content = new Blob([new Uint8Array(data.Body)], { type: "video/mp4" });
+		  		 	console.log(content);
+		  		 	var url = (window.URL || window.webkitURL).createObjectURL(content);
+		  		 	console.log(url);
+		  		 	source.setAttribute('src', url);
+			            video.appendChild(source);
+			            video.play();
+					 }
+					execute();
+		 
+			 });
+		}
+	}
+	execute();
+}
+
+	</script>
+
+	</head>
+	<body>
+
+ Email:<input id="email" type = "email">
+Password:<input id="password" type = "password">
+<input type = "button" name = "submit" id='btn' onclick="login()">
+
+ <video controls width="320" height="240" id='video'></video>
+
+	</body>
+	<script src="https://s3.amazonaws.com/dharam-code/project/config.js"></script>
+	</html>
+
+
+
+
